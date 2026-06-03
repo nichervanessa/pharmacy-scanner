@@ -324,11 +324,30 @@
 
     // ── Camera ────────────────────────────────────────────────────────────────
     async function startCamera() {
+      // First, explicitly request camera permission so the browser prompts the user
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
+        stream.getTracks().forEach(t => t.stop()); // release immediately; html5-qrcode will re-open it
+      } catch(permErr) {
+        showView("ready");
+        document.getElementById("camera-error-box").classList.remove("hidden");
+        const name = permErr.name || "";
+        document.getElementById("camera-error-msg").textContent =
+          name === "NotAllowedError" || name === "PermissionDeniedError"
+            ? "Camera permission denied. Tap 🔒 in the address bar → Site settings → Camera → Allow, then try again."
+            : name === "NotFoundError"
+            ? "No camera found on this device."
+            : (permErr.message || "Could not access camera.");
+        setMode("manual");
+        return;
+      }
+
       showView("scanning");
       try {
         scanner = new Html5Qrcode("reader");
         await scanner.start(
-          { facingMode: "environment" },
+          // Use ideal (soft) constraint — falls back to any camera instead of hard-failing
+          { facingMode: { ideal: "environment" } },
           { fps: 15, qrbox: { width: 260, height: 160 }, aspectRatio: 1.5 },
           async (text) => {
             if (processing) return;
