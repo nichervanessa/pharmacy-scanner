@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Page Not Found — Rx Scanner</title>
+  <!-- Redirect to index with the original path as a query param (GitHub Pages SPA fix) -->
+  <script>
+    const path = window.location.pathname;
+    const query = window.location.search;
+    const hash = window.location.hash;
+    const newUrl = window.location.origin + "/?p=" + encodeURIComponent(path + query + hash);
+    window.location.replace(newUrl);
+  </script>
+</head>
+<body style="background:#111827;color:white;font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">
+  <p>Redirecting…</p>
+</body>
+</html>
