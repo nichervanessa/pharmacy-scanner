@@ -4,6 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Pharmacy Barcode Scanner</title>
+  <meta name="description" content="Mobile barcode scanner for pharmacy POS system" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <!-- Open Graph -->
+  <meta property="og:title" content="Pharmacy Barcode Scanner" />
+  <meta property="og:description" content="Scan medicine barcodes directly into the POS" />
+  <meta property="og:type" content="website" />
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Firebase SDK -->
   <script type="module">
@@ -60,8 +68,36 @@
     </div>
   </div>
 
+  <!-- Landing (no session param) -->
+  <div id="view-landing" class="hidden flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center">
+    <div class="w-24 h-24 bg-blue-600 rounded-3xl flex items-center justify-center shadow-2xl">
+      <span class="text-white font-black text-4xl">Rx</span>
+    </div>
+    <div>
+      <h1 class="text-2xl font-black text-white mb-2">Pharmacy Scanner</h1>
+      <p class="text-gray-400 text-sm max-w-xs">
+        This page is used by cashiers to scan medicine barcodes into the POS system.
+        To use it, scan the QR code shown on the POS screen.
+      </p>
+    </div>
+    <!-- PWA install button (hidden until install prompt fires) -->
+    <button id="install-btn" onclick="installApp()"
+      class="hidden flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700
+        rounded-2xl font-bold text-sm text-white">
+      📲 Install as App
+    </button>
+    <div class="bg-gray-800 rounded-2xl p-5 max-w-sm w-full text-sm text-gray-300 space-y-2 text-start">
+      <p class="font-semibold text-white">📋 Instructions for cashier:</p>
+      <p>1️⃣  Open POS → click <strong>Use Phone</strong> button</p>
+      <p>2️⃣  Scan the QR code with this phone</p>
+      <p>3️⃣  Tap <strong>Start Camera</strong></p>
+      <p>4️⃣  Point at medicine barcodes</p>
+    </div>
+    <p class="text-xs text-gray-600">Pharmacy Management System © 2025</p>
+  </div>
+
   <!-- Loading -->
-  <div id="view-loading" class="flex-1 flex flex-col items-center justify-center gap-4 p-8">
+  <div id="view-loading" class="hidden flex-1 flex flex-col items-center justify-center gap-4 p-8">
     <div class="spinner"></div>
     <p class="text-gray-400 text-sm">Connecting…</p>
   </div>
@@ -183,7 +219,7 @@
     let   processing = false;
 
     // ── Views ─────────────────────────────────────────────────────────────────
-    const views = ["loading","invalid","ready","scanning"];
+    const views = ["landing","loading","invalid","ready","scanning"];
     function showView(name) {
       views.forEach(v => {
         const el = document.getElementById("view-" + v);
@@ -193,9 +229,34 @@
       });
     }
 
+    // ── Service Worker registration ───────────────────────────────────────────
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+
+    // ── PWA install prompt ────────────────────────────────────────────────────
+    let deferredInstall;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstall = e;
+      document.getElementById("install-btn")?.classList.remove("hidden");
+    });
+    window.installApp = async () => {
+      if (!deferredInstall) return;
+      deferredInstall.prompt();
+      const { outcome } = await deferredInstall.userChoice;
+      if (outcome === "accepted") document.getElementById("install-btn")?.classList.add("hidden");
+    };
+
     // ── Wait for Firebase then validate ──────────────────────────────────────
-    if (window._firebaseReady) validateSession();
-    else document.addEventListener("firebase-ready", validateSession);
+    if (window._firebaseReady) init();
+    else document.addEventListener("firebase-ready", init);
+
+    function init() {
+      // If no session param, show landing page instead of scanner
+      if (!sessionId) { showView("landing"); return; }
+      validateSession();
+    }
 
     async function validateSession(retry = 0) {
       showView("loading");
